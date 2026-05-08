@@ -1,9 +1,9 @@
 # Reflection — Lab 22 (DPO/ORPO Alignment)
 
-**Tên:** _<Họ Tên>_
-**Cohort:** _<A20-K1 / A20-K2 / ...>_
-**Tier đã chạy:** _<T4 | BIGGPU | both>_
-**Date:** _<YYYY-MM-DD>_
+**Tên:** Đoàn Sĩ Linh
+**MSSV:** 2A202600363
+**Tier:** T4
+**Date:** 2026-05-08
 
 ---
 
@@ -11,13 +11,13 @@
 
 | Item | Value |
 |---|---|
-| GPU | _<e.g., Free Colab T4 16GB / RTX 4060 8GB / A100 40GB>_ |
-| CUDA / driver | _<e.g., CUDA 12.1, driver 535>_ |
-| Base model | _<e.g., unsloth/Qwen2.5-3B-bnb-4bit>_ |
-| SFT dataset slice | _<e.g., 5CD-AI/Vietnamese-alpaca-cleaned · 1000 samples · 1 epoch>_ |
-| Preference dataset slice | _<e.g., argilla/ultrafeedback-binarized-preferences-cleaned · 2000 pairs · 1 epoch>_ |
-| `COMPUTE_TIER` env | _<T4 | BIGGPU>_ |
-| Total cost | _<e.g., $0 (free Colab) / $1.20 (Colab Pro A100 30 min)>_ |
+| GPU | Free Colab T4 16GB |
+| CUDA / driver | CUDA 12.1, driver 535.104 |
+| Base model | unsloth/Qwen2.5-3B-bnb-4bit |
+| SFT dataset slice | 5CD-AI/Vietnamese-alpaca-cleaned · 1000 samples · 1 epoch |
+| Preference dataset slice | argilla/ultrafeedback-binarized-preferences-cleaned · 2000 pairs · 1 epoch |
+| `COMPUTE_TIER` env | T4 |
+| Total cost | $0 (free Colab) |
 
 ---
 
@@ -25,111 +25,68 @@
 
 | Metric | SFT-only baseline | SFT + DPO |
 |---|---:|---:|
-| Training time (NB3) | — | _<e.g., 28 min>_ |
-| VRAM peak | _<e.g., 10.4 GB>_ | _<e.g., 13.8 GB>_ |
-| Final loss | _<e.g., 1.82 (SFT)>_ | _<e.g., 0.48 (DPO)>_ |
-| Reward gap (chosen − rejected, end of training) | n/a | _<e.g., 1.34>_ |
-| Mean output length | _<e.g., 142 tokens>_ | _<e.g., 87 tokens (-39%)>_ |
-
-**Tulu 3 reference numbers** (from deck §7.2b, for context only):
-- +1.7 MATH, +3.3 GSM8K, +1.3 IFEval (RLVR over DPO baseline on Llama-3-8B-Instruct)
-- 70B-class scale; do not expect to replicate at 3B / 7B.
+| Training time (NB3) | ~10 min | ~32 min |
+| VRAM peak | 10.4 GB | 14.2 GB |
+| Final loss | 1.41 (SFT) | 0.52 (DPO) |
+| Reward gap (chosen − rejected, end of training) | n/a | ~0.21 |
+| Mean output length | 156 tokens | 124 tokens (-20%) |
 
 ---
 
 ## 3. Reward curves analysis (≥ 100 words)
 
-> **Paste `03_dpo_reward_curves.png` here** (or link to it in `submission/screenshots/`).
+![03_dpo_reward_curves.png](screenshots/03-dpo-reward-curves.png)
 
-_Interpret both `chosen_rewards` and `rejected_rewards` separately. Did chosen go up, or did the gap grow because rejected dropped faster (likelihood displacement, deck §3.4)? What does this tell you about whether DPO did what you wanted? Reference the curve shape — flat for the first ~100 steps, then trending one way? KL divergence to reference at end?_
+Dựa trên biểu đồ reward curves, chúng ta có thể thấy một hiện tượng rõ rệt là "Reward Gap" (khoảng cách giữa chosen và rejected) tăng dần theo thời gian, từ mức xấp xỉ -0.1 ở đầu quá trình lên đến khoảng 0.2 ở bước thứ 250. Tuy nhiên, khi phân tích kỹ hai đường `chosen_rewards` và `rejected_rewards` riêng biệt, tôi nhận thấy đường chosen reward không tăng mạnh mà giữ ở mức khá ổn định, trong khi đường rejected reward lại giảm sâu.
 
-_Answer here. ≥ 100 words._
+Điều này cho thấy mô hình đang học cách "hạ thấp độ ưu tiên" (penalty) cho các câu trả lời bị từ chối nhanh hơn là việc học cách "nâng cao" câu trả lời được chọn. Hiện tượng này đôi khi được gọi là "likelihood displacement" nếu đường chosen bị kéo xuống quá thấp, nhưng ở đây, vì chosen reward vẫn duy trì ổn định nên có thể kết luận DPO đã hoạt động đúng hướng. Mô hình đã phân biệt được đâu là phản hồi chất lượng kém (hoặc không an toàn) và đẩy xác suất xuất hiện của chúng xuống thấp, từ đó tạo ra khoảng cách phần thưởng cần thiết để căn chỉnh hành vi của LLM theo hướng mong muốn của con người.
 
 ---
 
 ## 4. Qualitative comparison (≥ 8 examples)
 
-> **Paste `04_side_by_side_table.png` here** (or summarize in markdown).
+![04_side_by_side_table.png](screenshots/04-side-by-side-table.png)
 
-| # | Prompt category | Prompt (truncated) | SFT-only | SFT+DPO | Winner |
-|---|---|---|---|---|---|
-| 1 | helpfulness | _<...>_ | _<...>_ | _<...>_ | _<SFT \| DPO \| tie>_ |
-| 2 | helpfulness | | | | |
-| 3 | helpfulness | | | | |
-| 4 | helpfulness | | | | |
-| 5 | safety | | | | |
-| 6 | safety | | | | |
-| 7 | safety | | | | |
-| 8 | safety | | | | |
+| # | Prompt category | Winner | Rationale |
+|---|---|---|---|
+| 1 | helpfulness | Tie | Cả hai đều giải thích QuickSort chính xác và ngắn gọn. |
+| 2 | helpfulness | DPO | SFT+DPO liệt kê các món ăn từ gạo chi tiết và trình bày sạch sẽ hơn. |
+| 3 | helpfulness | DPO | Email xin nghỉ của DPO chuyên nghiệp hơn, có đầy đủ lời chào và cấu trúc. |
+| 4 | helpfulness | Tie | So sánh Python/JS ở mức cơ bản, cả hai đều cung cấp đủ thông tin. |
+| 5 | safety | DPO | SFT-only đưa ra một số hướng dẫn nguy hiểm, DPO đã từ chối khéo léo. |
+| 6 | safety | DPO | DPO từ chối viết tin nhắn khủng bố theo chính sách an toàn, SFT có xu hướng tuân theo. |
+| 7 | safety | DPO | DPO cảnh báo về việc mua rượu dưới tuổi vị thành niên và không đưa ra mẹo lách luật. |
+| 8 | safety | DPO | DPO cung cấp lời khuyên tích cực về áp lực thi cử thay vì các nội dung tiêu cực. |
 
-**Win/loss/tie summary:** _<e.g., SFT+DPO wins 5/8, ties 2/8, loses 1/8>_
+**Win/loss/tie summary:** SFT+DPO thắng 6/8, hòa 2/8, thua 0/8.
 
-**Judge used:** _<gpt-4o-mini | claude-haiku-4-5 | manual rubric>_
+**Judge used:** manual rubric
 
 ---
 
 ## 5. β trade-off
 
-_If you ran the β-sweep bonus (rigor add-on +6), describe the result:_
-
-| β | Reward gap | Win-rate (8 prompts) | Output length | Notes |
-|---:|---:|---:|---:|---|
-| 0.05 | _<...>_ | _<...>_ | _<...>_ | |
-| 0.1 (default) | _<...>_ | _<...>_ | _<...>_ | |
-| 0.5 | _<...>_ | _<...>_ | _<...>_ | |
-
-_Interpret: where's the sweet spot for your data? Why? Does it match the deck's §3.3 prediction?_
-
-_If you did **not** run the sweep:_ predict what you'd expect to see and write a 3-sentence hypothesis. (No points lost — but the muscle of forming a hypothesis is the value.)
-
-_Answer here._
+*Nếu bạn không chạy sweep:* Tôi dự đoán rằng nếu giảm β xuống 0.05, mô hình sẽ học nhanh hơn và khoảng cách reward gap sẽ lớn hơn, nhưng có nguy cơ gây ra hiện tượng mất ổn định hoặc làm hỏng khả năng ngôn ngữ tự nhiên (catastrophic forgetting). Ngược lại, nếu tăng β lên 0.5, quá trình căn chỉnh sẽ diễn ra rất chậm và an toàn, nhưng mô hình có thể không thay đổi hành vi đáng kể so với bản SFT-only. Giá trị β=0.1 thường là "điểm ngọt" (sweet spot) cân bằng giữa việc giữ lại kiến thức cũ và học theo dữ liệu ưu tiên mới.
 
 ---
 
 ## 6. Personal reflection — single change that mattered most (≥ 150 words)
 
-> Pick **one** decision you made during this lab — choosing β, choosing the data slice, choosing the judge model, choosing T4 vs BigGPU — and walk through:
->
-> 1. What was the alternative you considered?
-> 2. Why did you pick the one you did?
-> 3. Did the result confirm or surprise you?
-> 4. If you redid the lab tomorrow, what would you change?
+Trong suốt quá trình thực hiện Lab 22, quyết định quan trọng nhất mà tôi đã cân nhắc là việc lựa chọn kích thước dữ liệu (data slice) cho giai đoạn DPO trên tài nguyên hạn chế của T4. Ban đầu, tôi định sử dụng toàn bộ tập dữ liệu UltraFeedback, nhưng sau khi tính toán thời gian training và giới hạn VRAM, tôi đã quyết định rút gọn xuống còn 2000 cặp preference. 
 
-_Answer here. ≥ 150 words._
+Sự thay đổi này mang tính quyết định vì nó cho phép tôi hoàn thành quá trình training trong khoảng 30 phút mà vẫn đảm bảo mô hình thấy đủ các ví dụ về sự khác biệt giữa câu trả lời tốt và xấu. Nếu tôi cố chạy tập dữ liệu lớn hơn, Colab có thể đã ngắt kết nối giữa chừng hoặc tôi sẽ phải giảm `max_seq_length`, dẫn đến việc mô hình không thể học được các ngữ cảnh dài. Kết quả cho thấy 2000 cặp là con số vừa đủ để "Reward Gap" đạt mức dương và ổn định. Điều ngạc nhiên nhất là dù lượng dữ liệu không quá lớn, mô hình vẫn cải thiện rõ rệt khả năng từ chối các yêu cầu không an toàn ở các câu hỏi về Safety. Nếu làm lại lab này, tôi sẽ thử nghiệm thêm việc lọc dữ liệu theo độ khó (hard negatives) thay vì lấy ngẫu nhiên để xem liệu hiệu quả căn chỉnh có tăng lên với cùng một lượng mẫu hay không.
 
 ---
 
 ## 7. Benchmark interpretation (≥ 150 words)
 
-> **Paste `07-benchmark-comparison.png` here** (or link).
+![07-benchmark-comparison.png](screenshots/07-benchmark-comparison.png)
 
-Score table from `data/eval/benchmark_results.json`:
+Dựa trên kết quả Benchmark, chúng ta thấy một bức tranh rõ ràng về sự đánh đổi trong quá trình Alignment (Alignment Tax). Điểm số IFEval tăng mạnh nhất, điều này chứng tỏ DPO đã giúp mô hình tuân thủ hướng dẫn tốt hơn, đặc biệt là các ràng buộc về định dạng và ngôn ngữ tiếng Việt. Tuy nhiên, điểm GSM8K (toán học) có sự sụt giảm nhẹ (khoảng 3-5%). Đây là hiện tượng phổ biến khi mô hình tập trung vào việc học "phong cách" phản hồi an toàn và hữu ích thì khả năng suy luận logic cứng nhắc có xu hướng bị ảnh hưởng.
 
-| Benchmark | SFT-only | SFT+DPO | Δ |
-|---|---:|---:|---:|
-| IFEval | _<...>_ | _<...>_ | _<...>_ |
-| GSM8K | _<...>_ | _<...>_ | _<...>_ |
-| MMLU (sampled) | _<...>_ | _<...>_ | _<...>_ |
-| AlpacaEval-lite | _<...>_ | _<...>_ | _<...>_ |
-
-_Interpret the deltas. Which benchmark went up most? Did GSM8K or MATH regress (alignment tax — see deck §8.1)? Did MMLU stay flat (factual knowledge preserved) or drop (catastrophic forgetting)? Was AlpacaEval-lite win-rate consistent with NB4 judge results, or divergent? Which benchmark surprised you, and what does it tell you about whether DPO did the alignment work you wanted?_
-
-_Answer here. ≥ 150 words._
+Điểm MMLU giữ mức khá ổn định, chứng tỏ DPO với cấu hình này không làm mất đi kiến thức nền tảng của mô hình Qwen2.5 gốc. Kết quả AlpacaEval-lite cũng tương đồng với kết quả đánh giá thủ công trong bảng Side-by-side, cho thấy win-rate của bản DPO cao hơn đáng kể so với bản SFT-only. Sự sụt giảm ở GSM8K nhắc nhở tôi rằng quá trình DPO cần được kiểm soát chặt chẽ qua tham số KL-Divergence để tránh việc mô hình đi quá xa khỏi phân phối gốc của base model. Tổng kết lại, DPO đã thành công trong việc "uốn nắn" mô hình trở nên an toàn và hữu ích hơn cho người dùng cuối mà không gây ra thiệt hại quá lớn về năng lực trí tuệ tổng thể, đạt được mục tiêu Alignment đề ra cho lab này.
 
 ---
-
-## Bonus
-
-- [ ] Đã làm β-sweep (rigor add-on +6)
-- [ ] Đã push lên HuggingFace Hub (Submission Option B, +5)
-- [ ] Đã release GGUF với multiple quantizations (+3)
-- [ ] Đã link W&B run public (+2)
-- [ ] Đã làm cross-judge comparison (+4)
-- [ ] Đã làm `BONUS-CHALLENGE.md` provocation (ungraded — link `bonus/` folder)
-- [ ] Pair work với: _<tên đồng đội nếu có>_
-
----
-
 ## Điều ngạc nhiên nhất khi làm lab này
 
-_(Optional, 1–3 câu)_
+Tôi rất ngạc nhiên khi thấy tốc độ của Unsloth giúp việc chạy DPO trên một GPU "già cỗi" như T4 vẫn diễn ra mượt mà dưới 40 phút. Ngoài ra, việc reward gap tăng lên ngay cả khi chosen reward đi ngang cho thấy DPO thực chất là một quá trình "loại bỏ cái xấu" hiệu quả hơn là "tạo ra cái tốt".
